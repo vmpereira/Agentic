@@ -30,7 +30,19 @@ const sampleDoc: DinatInvoiceDocument = {
     coordinates: { latitude: 14.06793, longitude: -87.194347, reference_system: 'WGS 84' },
     store_contact: 'Lic. Marleny Zelaya',
   },
-  items: [],
+  items: [
+    {
+      category: 'JUGO NATURAS EN LATA 335 ML',
+      code: 'NAT-LT-MZ',
+      description: 'Jugo NATURAS en lata 335 ml',
+      flavor: 'Manzana',
+      package_type: 'Caja x 24 latas',
+      boxes_quantity: 40,
+      total_units: 960,
+      unit_price: 348.0,
+      total_amount: 13920.0,
+    }
+  ],
   summary_by_presentation: [],
   financial_totals: {
     total_boxes: 40,
@@ -40,11 +52,11 @@ const sampleDoc: DinatInvoiceDocument = {
     grand_total: 16008.0,
   },
   transport_logistics: {
-    driver_name: 'José Fernando',
+    driver_name: 'José Fernando Andino Cruz',
     employee_id: 'DNT-1428',
-    national_id: '0801',
-    role: 'Conductor',
-    assigned_route: 'R-05',
+    national_id: '0801-1992-04517',
+    role: 'Conductor - Repartidor Ruta Sur',
+    assigned_route: 'R-05 Tegucigalpa Centro-Sur',
     transport_unit: 'PBK-7412',
   },
   delivery_status: {
@@ -61,7 +73,34 @@ const sampleDoc: DinatInvoiceDocument = {
 };
 
 describe('ExportProduction Component', () => {
-  it('toggles mode between Append (OpenFileDialog) and Crear Nuevo (SaveFileDialog)', () => {
+  it('toggles tabs between the 3 Matrix sheets (DATOS-CLIENTES, PRODUCTO, ENTREGA)', () => {
+    render(
+      <ExportProduction
+        documentData={sampleDoc}
+        onConfirmExport={vi.fn()}
+        onEditData={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    );
+
+    // Initial tab is PRODUCTO
+    expect(screen.getByText(/Hoja 2: PRODUCTO/i)).toBeInTheDocument();
+    expect(screen.getByText('NAT-LT-MZ')).toBeInTheDocument();
+
+    // Click DATOS-CLIENTES tab
+    const clientTabBtn = screen.getByText(/Hoja 1: DATOS-CLIENTES/i);
+    fireEvent.click(clientTabBtn);
+    expect(screen.getByText('LC-T5-TGU')).toBeInTheDocument();
+    expect(screen.getByText('14.06793')).toBeInTheDocument();
+
+    // Click ENTREGA tab
+    const delivTabBtn = screen.getByText(/Hoja 3: ENTREGA/i);
+    fireEvent.click(delivTabBtn);
+    expect(screen.getByText('José Fernando Andino Cruz')).toBeInTheDocument();
+    expect(screen.getByText('0801-1992-04517')).toBeInTheDocument();
+  });
+
+  it('toggles mode between Append and Crear Nuevo', () => {
     const handleConfirm = vi.fn();
     render(
       <ExportProduction
@@ -81,10 +120,10 @@ describe('ExportProduction Component', () => {
     fireEvent.click(radioCreate);
 
     expect(radioCreate.checked).toBe(true);
-    expect(screen.getByText(/Guardar como \(Nuevo Excel\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Guardar como \(SaveFileDialog\)/i)).toBeInTheDocument();
   });
 
-  it('triggers onConfirmExport with current target path and selected mode', () => {
+  it('triggers onConfirmExport with MATRIZ-ORDEN-COMPRA.xlsx path and selected mode', () => {
     const handleConfirm = vi.fn();
     render(
       <ExportProduction
@@ -99,8 +138,10 @@ describe('ExportProduction Component', () => {
     fireEvent.click(btnConfirm);
 
     expect(handleConfirm).toHaveBeenCalledWith({
-      excelPath: expect.stringContaining('Registros_Facturas_2026.xlsx'),
+      excelPath: expect.stringContaining('MATRIZ-ORDEN-COMPRA.xlsx'),
       mode: 'append',
+      fileHandle: null,
     });
   });
 });
+

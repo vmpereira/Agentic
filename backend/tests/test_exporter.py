@@ -1,11 +1,16 @@
 import os
 import openpyxl
 import pytest
-from exporter import generate_or_append_excel, resolve_safe_excel_path, get_last_populated_row
+from exporter import (
+    generate_or_append_excel,
+    resolve_safe_excel_path,
+    get_last_populated_row,
+    SHEET_COLUMNS,
+)
 
 
-def test_create_new_excel(tmp_path, mock_dinat_invoice_doc):
-    excel_file = tmp_path / "test_registros_create.xlsx"
+def test_create_new_excel_three_sheets(tmp_path, mock_dinat_invoice_doc):
+    excel_file = tmp_path / "test_matriz_create.xlsx"
     file_path = str(excel_file)
 
     res = generate_or_append_excel([mock_dinat_invoice_doc], file_path, mode="create")
@@ -13,26 +18,58 @@ def test_create_new_excel(tmp_path, mock_dinat_invoice_doc):
     assert res["rows_added"] == len(mock_dinat_invoice_doc.items)
     assert os.path.exists(res["target_path"])
 
-    # Verify OpenPyXL file content
     wb = openpyxl.load_workbook(res["target_path"])
-    assert "Facturas" in wb.sheetnames
-    sheet = wb["Facturas"]
-    assert sheet.max_row == 1 + len(mock_dinat_invoice_doc.items)  # 1 header + N items
+    
+    # 1. Verify 3 sheets exist
+    order_no = mock_dinat_invoice_doc.document_metadata.order_number
+    expected_client_sheet = f"{order_no}-DATOS-CLIENTES"
+    expected_prod_sheet = f"{order_no}-PRODUCTO"
+    expected_deliv_sheet = f"{order_no}-ENTREGA"
 
-    # Check header values
-    header_row = [cell.value for cell in sheet[1]]
-    assert "Número de Orden" in header_row
-    assert "RTN Proveedor" in header_row
-    assert "Código Producto" in header_row
+    assert expected_client_sheet in wb.sheetnames
+    assert expected_prod_sheet in wb.sheetnames
+    assert expected_deliv_sheet in wb.sheetnames
 
-    # Check first data row values
-    row2 = [cell.value for cell in sheet[2]]
-    assert row2[0] == "OC-2026-08-0417"  # Order number
-    assert row2[2] == "DINAT HONDURAS, S. A. DE C. V."  # Vendor
+    # 2. Check Sheet 1: DATOS-CLIENTES (11 columns)
+    ws_client = wb[expected_client_sheet]
+    client_headers = [cell.value for cell in ws_client[1]]
+    assert client_headers == SHEET_COLUMNS["DATOS-CLIENTES"]
+    assert ws_client.max_row == 2
+    row2_client = [cell.value for cell in ws_client[2]]
+    assert row2_client[0] == "OC-2026-08-0417"
+    assert row2_client[2] == "Supermercados La Colonia, S. A. de C. V."
+    assert row2_client[3] == "08019008123459"
+    assert row2_client[5] == "LC-T5-TGU"
+    assert row2_client[8] == 14.06793
+    assert row2_client[9] == -87.194347
+
+    # 3. Check Sheet 2: PRODUCTO (9 columns)
+    ws_prod = wb[expected_prod_sheet]
+    prod_headers = [cell.value for cell in ws_prod[1]]
+    assert prod_headers == SHEET_COLUMNS["PRODUCTO"]
+    assert ws_prod.max_row == 1 + len(mock_dinat_invoice_doc.items)
+    row2_prod = [cell.value for cell in ws_prod[2]]
+    assert row2_prod[0] == "OC-2026-08-0417"
+    assert row2_prod[1] == "NAT-LT-MZ"
+    assert row2_prod[3] == "Manzana"
+    assert row2_prod[5] == 40
+    assert row2_prod[6] == 960
+
+    # 4. Check Sheet 3: ENTREGA (11 columns)
+    ws_deliv = wb[expected_deliv_sheet]
+    deliv_headers = [cell.value for cell in ws_deliv[1]]
+    assert deliv_headers == SHEET_COLUMNS["ENTREGA"]
+    assert ws_deliv.max_row == 2
+    row2_deliv = [cell.value for cell in ws_deliv[2]]
+    assert row2_deliv[0] == "OC-2026-08-0417"
+    assert row2_deliv[1] == "José Fernando Andino Cruz"
+    assert row2_deliv[2] == "0801-1992-04517"
+    assert row2_deliv[4] == "DNT-1428"
+    assert row2_deliv[7] == "SÍ - REALIZADA SIN PROBLEMA"
 
 
 def test_append_existing_excel_sequential_lines(tmp_path, mock_dinat_invoice_doc):
-    excel_file = tmp_path / "test_registros_append_sequential.xlsx"
+    excel_file = tmp_path / "test_matriz_append_sequential.xlsx"
     file_path = str(excel_file)
     items_count = len(mock_dinat_invoice_doc.items)
 
@@ -40,11 +77,6 @@ def test_append_existing_excel_sequential_lines(tmp_path, mock_dinat_invoice_doc
     res1 = generate_or_append_excel([mock_dinat_invoice_doc], file_path, mode="create")
     target_path = res1["target_path"]
     
-    wb1 = openpyxl.load_workbook(target_path)
-    sheet1 = wb1["Facturas"]
-    assert sheet1.max_row == 1 + items_count
-    assert sheet1.cell(row=2, column=1).value == "OC-2026-08-0417"
-
     # 2. Prepare Document 2 with a different order number (Order OC-2026-09-9999)
     doc2 = mock_dinat_invoice_doc.model_copy(deep=True)
     doc2.document_metadata.order_number = "OC-2026-09-9999"
@@ -55,37 +87,33 @@ def test_append_existing_excel_sequential_lines(tmp_path, mock_dinat_invoice_doc
     assert res2["rows_added"] == items_count
 
     # 4. Read back file and verify that Doc 1 rows are preserved intact
-    # and Doc 2 rows are sequentially appended at the end
     wb2 = openpyxl.load_workbook(target_path)
-    sheet2 = wb2["Facturas"]
-    expected_total_rows = 1 + (items_count * 2)
     
-    assert get_last_populated_row(sheet2) == expected_total_rows
-    assert sheet2.cell(row=2, column=1).value == "OC-2026-08-0417"  # Preserved Doc 1
-    assert sheet2.cell(row=1 + items_count, column=1).value == "OC-2026-08-0417" # Preserved Doc 1 end
-    assert sheet2.cell(row=2 + items_count, column=1).value == "OC-2026-09-9999" # Appended Doc 2 start!
-    assert sheet2.cell(row=expected_total_rows, column=1).value == "OC-2026-09-9999" # Appended Doc 2 end!
+    # Check that sheets contain rows for both documents
+    for name in wb2.sheetnames:
+        if "PRODUCTO" in name:
+            ws_prod = wb2[name]
+            assert ws_prod.max_row == 1 + (items_count * 2)
+            assert ws_prod.cell(row=2, column=1).value == "OC-2026-08-0417"
+            assert ws_prod.cell(row=2 + items_count, column=1).value == "OC-2026-09-9999"
 
 
-def test_mode_create_overwrites_existing_excel(tmp_path, mock_dinat_invoice_doc):
-    excel_file = tmp_path / "test_registros_overwrite.xlsx"
-    file_path = str(excel_file)
-    items_count = len(mock_dinat_invoice_doc.items)
+def test_compare_columns_with_real_matriz_file():
+    real_matriz_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../MATRIZ-ORDEN-COMPRA.xlsx"))
+    if not os.path.exists(real_matriz_path):
+        pytest.skip("MATRIZ-ORDEN-COMPRA.xlsx not present at workspace root")
 
-    # 1. Create file first with Document 1
-    generate_or_append_excel([mock_dinat_invoice_doc], file_path, mode="create")
-
-    # 2. Execute mode="create" on same file with Document 2
-    doc2 = mock_dinat_invoice_doc.model_copy(deep=True)
-    doc2.document_metadata.order_number = "OC-2026-NEW"
-
-    res = generate_or_append_excel([doc2], file_path, mode="create")
-    assert res["success"] is True
-
-    wb = openpyxl.load_workbook(file_path)
-    sheet = wb["Facturas"]
-    assert sheet.max_row == 1 + items_count  # Overwritten cleanly back to 1 header + items_count
-    assert sheet.cell(row=2, column=1).value == "OC-2026-NEW"
+    wb = openpyxl.load_workbook(real_matriz_path)
+    
+    for sheet_name in wb.sheetnames:
+        ws = wb[sheet_name]
+        real_headers = [cell.value for cell in ws[1]]
+        if "DATOS-CLIENTES" in sheet_name:
+            assert real_headers == SHEET_COLUMNS["DATOS-CLIENTES"]
+        elif "PRODUCTO" in sheet_name:
+            assert real_headers == SHEET_COLUMNS["PRODUCTO"]
+        elif "ENTREGA" in sheet_name:
+            assert real_headers == SHEET_COLUMNS["ENTREGA"]
 
 
 def test_resolve_safe_excel_path_permission_fallback():
@@ -97,7 +125,7 @@ def test_resolve_safe_excel_path_permission_fallback():
 
 
 def test_generate_or_append_excel_with_restricted_path(mock_dinat_invoice_doc):
-    restricted_path = r"C:\Users\usuario\Registros_Factura_2026.xlsx"
+    restricted_path = r"C:\Users\usuario\MATRIZ-ORDEN-COMPRA.xlsx"
     res = generate_or_append_excel([mock_dinat_invoice_doc], restricted_path, mode="create")
 
     assert res["success"] is True

@@ -34,6 +34,9 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Local Generated Excel Exports (preserve directory if needed)
+# Local Generated Excel Exports
 exports/*.xlsx
+backend/exports/*.xlsx
+Nuevo_MATRIZ-ORDEN-COMPRA.xlsx
 !exports/.gitkeep
+!backend/exports/.gitkeep

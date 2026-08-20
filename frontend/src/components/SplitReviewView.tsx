@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { DinatInvoiceDocument, LineItem } from '../types/invoice';
-import { Check, Eye, RefreshCw, ChevronDown, ChevronUp, AlertCircle, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
+import { Check, Eye, RefreshCw, ChevronDown, ChevronUp, AlertCircle, CheckCircle2, AlertTriangle, Clock, MapPin, Truck, Package, UserCheck, FileSpreadsheet } from 'lucide-react';
 
 interface SplitReviewViewProps {
   documentData: DinatInvoiceDocument;
@@ -19,12 +19,12 @@ export const SplitReviewView: React.FC<SplitReviewViewProps> = ({
 }) => {
   const [formData, setFormData] = useState<DinatInvoiceDocument>(documentData);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    deliveryStatus: true, // First section opened by default!
-    header: false,
-    client: false,
+    deliveryStatus: true,
+    client: true,
     items: true,
+    logistics: true,
+    header: false,
     totals: true,
-    logistics: false,
     authorizations: false,
   });
 
@@ -57,6 +57,19 @@ export const SplitReviewView: React.FC<SplitReviewViewProps> = ({
     setFormData((prev) => ({
       ...prev,
       client: { ...prev.client, [field]: value },
+    }));
+  };
+
+  const handleCoordinatesChange = (field: 'latitude' | 'longitude', value: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      client: {
+        ...prev.client,
+        coordinates: {
+          ...prev.client.coordinates,
+          [field]: value,
+        },
+      },
     }));
   };
 
@@ -129,14 +142,14 @@ export const SplitReviewView: React.FC<SplitReviewViewProps> = ({
         <div>
           <div className="flex items-center space-x-3">
             <h2 className="text-lg font-semibold text-slate-800">
-              3. Revisar y editar datos
+              Revisar y editar datos (Matriz 3 Hojas Excel)
             </h2>
             <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
-              Completado
+              Datos Extraídos
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Datos extraídos del PDF mediante LLM. Verifica y ajusta los campos antes de enviar a producción.
+            Valida los campos correspondientes a las 3 hojas de <strong>MATRIZ-ORDEN-COMPRA.xlsx</strong> antes de enviar a producción.
           </p>
         </div>
 
@@ -152,16 +165,22 @@ export const SplitReviewView: React.FC<SplitReviewViewProps> = ({
       </div>
 
       {/* Info notification */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center space-x-3 text-xs text-blue-800">
-        <AlertCircle className="w-4 h-4 text-blue-600 flex-shrink-0" />
-        <span>
-          Por favor revisa los campos extraídos. Puedes editar cualquier valor. Todos los cambios recalcularán automáticamente los totales.
-        </span>
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center justify-between text-xs text-blue-800">
+        <div className="flex items-center space-x-3">
+          <AlertCircle className="w-4 h-4 text-blue-600 flex-shrink-0" />
+          <span>
+            Los datos alimentan las hojas <strong>DATOS-CLIENTES</strong>, <strong>PRODUCTO</strong> y <strong>ENTREGA</strong>. Las modificaciones recalculan totales en tiempo real.
+          </span>
+        </div>
+        <div className="hidden sm:flex items-center space-x-2 text-[11px] font-bold">
+          <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-900 border border-blue-200">3 Hojas Excel</span>
+          <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 border border-emerald-200">31 Columnas Totales</span>
+        </div>
       </div>
 
       {/* Structured Sections */}
       <div className="space-y-4">
-        {/* FIRST SECTION: Delivery Status & Recepción (Placed BEFORE Encabezado y Datos del Proveedor!) */}
+        {/* SECTION: Delivery Status & Recepción (Sheet 3 Preview & Audit) */}
         <div className={`border rounded-lg overflow-hidden transition-all ${
           isStatusOk ? 'border-emerald-200' : 'border-red-300 ring-2 ring-red-100'
         }`}>
@@ -200,7 +219,7 @@ export const SplitReviewView: React.FC<SplitReviewViewProps> = ({
                 )}
                 <div>
                   <h4 className="font-bold text-sm">
-                    {isStatusOk ? 'Recepción de Producto Exitosa' : 'Atención: Incidencia o Discrepancia Detectada'}
+                    {isStatusOk ? 'Recepción de Producto Conforme' : 'Atención: Incidencia o Discrepancia Detectada'}
                   </h4>
                   <p className="text-xs opacity-90 mt-0.5">
                     {isStatusOk
@@ -213,7 +232,7 @@ export const SplitReviewView: React.FC<SplitReviewViewProps> = ({
               {/* Status Grid Fields */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-slate-600 font-medium mb-1">Estado de la Entrega</label>
+                  <label className="block text-slate-600 font-medium mb-1">Estado de la Entrega (ESTADO_ENTREGA)</label>
                   <select
                     value={formData.delivery_status.status}
                     onChange={(e) => handleDeliveryStatusChange('status', e.target.value)}
@@ -232,7 +251,7 @@ export const SplitReviewView: React.FC<SplitReviewViewProps> = ({
                 <div>
                   <label className="block text-slate-600 font-medium mb-1 flex items-center space-x-1">
                     <Clock className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Hora de llegada</span>
+                    <span>Hora de llegada (HORA_LLEGADA)</span>
                   </label>
                   <div className="relative">
                     <input
@@ -249,7 +268,7 @@ export const SplitReviewView: React.FC<SplitReviewViewProps> = ({
                 <div>
                   <label className="block text-slate-600 font-medium mb-1 flex items-center space-x-1">
                     <Clock className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Hora de finalización</span>
+                    <span>Hora de finalización (HORA_FINALIZACION)</span>
                   </label>
                   <div className="relative">
                     <input
@@ -262,12 +281,11 @@ export const SplitReviewView: React.FC<SplitReviewViewProps> = ({
                     <Clock className="w-4 h-4 text-slate-400 absolute left-2.5 top-2.5 pointer-events-none" />
                   </div>
                 </div>
-
               </div>
 
               {/* Observaciones Textarea */}
               <div>
-                <label className="block text-slate-600 font-medium mb-1">Observaciones de Recepción / Faltantes</label>
+                <label className="block text-slate-600 font-medium mb-1">Observaciones de Recepción / Faltantes (OBSERVACION)</label>
                 <textarea
                   rows={2}
                   value={formData.delivery_status.observations}
@@ -286,25 +304,25 @@ export const SplitReviewView: React.FC<SplitReviewViewProps> = ({
             onClick={() => toggleSection('header')}
             className="w-full bg-slate-50 px-4 py-3 flex justify-between items-center text-sm font-semibold text-slate-800 hover:bg-slate-100 transition-colors"
           >
-            <span>1. Encabezado y Datos del Proveedor</span>
+            <span>Encabezado de Documento y Datos del Proveedor</span>
             {openSections.header ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
 
           {openSections.header && (
             <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs bg-white">
               <div>
-                <label className="block text-slate-600 font-medium mb-1">Número de orden / Factura</label>
+                <label className="block text-slate-600 font-medium mb-1">Número de orden / Factura (ID_COMPRA)</label>
                 <input
                   type="text"
                   value={formData.document_metadata.order_number}
                   onChange={(e) => handleMetadataChange('order_number', e.target.value)}
-                  className="table-input"
+                  className="table-input font-bold text-blue-700"
                   data-testid="input-order-number"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-600 font-medium mb-1">Fecha de emisión</label>
+                <label className="block text-slate-600 font-medium mb-1">Fecha de emisión (FECHA_VENTA)</label>
                 <input
                   type="date"
                   value={formData.document_metadata.issue_date}
@@ -347,7 +365,7 @@ export const SplitReviewView: React.FC<SplitReviewViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-600 font-medium mb-1">Marca / Marca Comercial</label>
+                <label className="block text-slate-600 font-medium mb-1">Marca Comercial</label>
                 <input
                   type="text"
                   value={formData.vendor.brand}
@@ -359,30 +377,36 @@ export const SplitReviewView: React.FC<SplitReviewViewProps> = ({
           )}
         </div>
 
-        {/* Section 2: Client & Geolocation */}
-        <div className="border border-slate-200 rounded-lg overflow-hidden">
+        {/* Section 2: Sheet 1 - DATOS-CLIENTES (11 Columns) */}
+        <div className="border border-indigo-200 rounded-lg overflow-hidden ring-1 ring-indigo-50">
           <button
             onClick={() => toggleSection('client')}
-            className="w-full bg-slate-50 px-4 py-3 flex justify-between items-center text-sm font-semibold text-slate-800 hover:bg-slate-100 transition-colors"
+            className="w-full bg-indigo-50/60 px-4 py-3 flex justify-between items-center text-sm font-semibold text-indigo-950 hover:bg-indigo-100/70 transition-colors"
           >
-            <span>2. Datos del Cliente y Geolocalización</span>
+            <div className="flex items-center space-x-2">
+              <MapPin className="w-4 h-4 text-indigo-600" />
+              <span>Hoja 1 Excel: DATOS-CLIENTES (11 Columnas)</span>
+              <span className="text-[10px] px-2 py-0.5 rounded font-bold uppercase bg-indigo-200 text-indigo-900 ml-2">
+                11 Campos
+              </span>
+            </div>
             {openSections.client ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
 
           {openSections.client && (
             <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs bg-white">
               <div>
-                <label className="block text-slate-600 font-medium mb-1">Razón Social Cliente</label>
+                <label className="block text-slate-600 font-medium mb-1">Razón Social (RAZON_SOCIAL)</label>
                 <input
                   type="text"
                   value={formData.client.company_name}
                   onChange={(e) => handleClientChange('company_name', e.target.value)}
-                  className="table-input"
+                  className="table-input font-medium"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-600 font-medium mb-1">RTN Cliente</label>
+                <label className="block text-slate-600 font-medium mb-1">RTN Cliente (RTN_CLIENTE)</label>
                 <input
                   type="text"
                   value={formData.client.rtn}
@@ -392,18 +416,18 @@ export const SplitReviewView: React.FC<SplitReviewViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-600 font-medium mb-1">Código de Tienda</label>
+                <label className="block text-slate-600 font-medium mb-1">Código de Tienda (COD_TIENDA)</label>
                 <input
                   type="text"
                   value={formData.client.store_code}
                   onChange={(e) => handleClientChange('store_code', e.target.value)}
-                  className="table-input"
+                  className="table-input font-bold"
                   data-testid="input-store-code"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-600 font-medium mb-1">Tienda / Sucursal</label>
+                <label className="block text-slate-600 font-medium mb-1">Tienda / Sucursal (TIENDA)</label>
                 <input
                   type="text"
                   value={formData.client.store_name}
@@ -413,17 +437,18 @@ export const SplitReviewView: React.FC<SplitReviewViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-600 font-medium mb-1">Coordenadas Lat / Long</label>
+                <label className="block text-slate-600 font-medium mb-1">Ciudad / Departamento (CIUDAD)</label>
                 <input
                   type="text"
-                  readOnly
-                  value={`${formData.client.coordinates.latitude}, ${formData.client.coordinates.longitude}`}
-                  className="table-input bg-slate-50 text-slate-500"
+                  value={formData.client.city_department}
+                  onChange={(e) => handleClientChange('city_department', e.target.value)}
+                  className="table-input"
+                  data-testid="input-client-city"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-600 font-medium mb-1">Contacto Tienda</label>
+                <label className="block text-slate-600 font-medium mb-1">Contacto Cliente (CONTACTO_CLIENTE)</label>
                 <input
                   type="text"
                   value={formData.client.store_contact}
@@ -431,17 +456,59 @@ export const SplitReviewView: React.FC<SplitReviewViewProps> = ({
                   className="table-input"
                 />
               </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-slate-600 font-medium mb-1">Dirección Completa (DIRECCION)</label>
+                <input
+                  type="text"
+                  value={formData.client.address}
+                  onChange={(e) => handleClientChange('address', e.target.value)}
+                  className="table-input"
+                  data-testid="input-client-address"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-slate-600 font-medium mb-1">Latitud (LATITUD)</label>
+                  <input
+                    type="number"
+                    step="0.000001"
+                    value={formData.client.coordinates.latitude}
+                    onChange={(e) => handleCoordinatesChange('latitude', Number(e.target.value))}
+                    className="table-input text-right font-mono"
+                    data-testid="input-client-lat"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-600 font-medium mb-1">Longitud (LONGITUD)</label>
+                  <input
+                    type="number"
+                    step="0.000001"
+                    value={formData.client.coordinates.longitude}
+                    onChange={(e) => handleCoordinatesChange('longitude', Number(e.target.value))}
+                    className="table-input text-right font-mono"
+                    data-testid="input-client-lng"
+                  />
+                </div>
+              </div>
             </div>
           )}
         </div>
 
-        {/* Section 3: Editable Line Items Table */}
-        <div className="border border-slate-200 rounded-lg overflow-hidden">
+        {/* Section 3: Sheet 2 - PRODUCTO (9 Columns) */}
+        <div className="border border-emerald-200 rounded-lg overflow-hidden ring-1 ring-emerald-50">
           <button
             onClick={() => toggleSection('items')}
-            className="w-full bg-slate-50 px-4 py-3 flex justify-between items-center text-sm font-semibold text-slate-800 hover:bg-slate-100 transition-colors"
+            className="w-full bg-emerald-50/60 px-4 py-3 flex justify-between items-center text-sm font-semibold text-emerald-950 hover:bg-emerald-100/70 transition-colors"
           >
-            <span>3. Detalle de Productos (Líneas del Documento)</span>
+            <div className="flex items-center space-x-2">
+              <Package className="w-4 h-4 text-emerald-600" />
+              <span>Hoja 2 Excel: PRODUCTO (9 Columnas - {formData.items.length} Líneas)</span>
+              <span className="text-[10px] px-2 py-0.5 rounded font-bold uppercase bg-emerald-200 text-emerald-900 ml-2">
+                Matriz de Productos
+              </span>
+            </div>
             {openSections.items ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
 
@@ -450,14 +517,14 @@ export const SplitReviewView: React.FC<SplitReviewViewProps> = ({
               <table className="w-full border-collapse text-xs text-left">
                 <thead>
                   <tr className="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200">
-                    <th className="p-2 min-w-[90px]">Código</th>
-                    <th className="p-2 min-w-[160px]">Descripción</th>
-                    <th className="p-2 min-w-[90px]">Sabor</th>
-                    <th className="p-2 min-w-[130px]">Presentación</th>
-                    <th className="p-2 min-w-[70px] text-right">Cajas</th>
-                    <th className="p-2 min-w-[80px] text-right">Unidades</th>
-                    <th className="p-2 min-w-[90px] text-right">Precio Box</th>
-                    <th className="p-2 min-w-[100px] text-right">Total Línea</th>
+                    <th className="p-2 min-w-[95px]">Código (CODIGO)</th>
+                    <th className="p-2 min-w-[160px]">Descripción (DESCRIPCION)</th>
+                    <th className="p-2 min-w-[90px]">Sabor (SABOR)</th>
+                    <th className="p-2 min-w-[130px]">Presentación (PRESENTACION)</th>
+                    <th className="p-2 min-w-[75px] text-right">Cajas (CANTIDAD)</th>
+                    <th className="p-2 min-w-[80px] text-right">Unidades (UNIDAD_TOTALES)</th>
+                    <th className="p-2 min-w-[90px] text-right">Precio (PRECIO)</th>
+                    <th className="p-2 min-w-[100px] text-right">Importe (IMPORTE)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
@@ -468,7 +535,7 @@ export const SplitReviewView: React.FC<SplitReviewViewProps> = ({
                           type="text"
                           value={item.code}
                           onChange={(e) => handleItemChange(idx, 'code', e.target.value)}
-                          className="table-input text-xs"
+                          className="table-input text-xs font-mono font-bold"
                           data-testid={`item-code-${idx}`}
                         />
                       </td>
@@ -544,14 +611,14 @@ export const SplitReviewView: React.FC<SplitReviewViewProps> = ({
             onClick={() => toggleSection('totals')}
             className="w-full bg-slate-50 px-4 py-3 flex justify-between items-center text-sm font-semibold text-slate-800 hover:bg-slate-100 transition-colors"
           >
-            <span>4. Resumen y Totales Financieros</span>
+            <span>Totales Financieros y Control de Despacho</span>
             {openSections.totals ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
 
           {openSections.totals && (
             <div className="p-4 grid grid-cols-1 md:grid-cols-5 gap-4 text-xs bg-white">
               <div>
-                <label className="block text-slate-600 font-medium mb-1">Total de Cajas Despachadas</label>
+                <label className="block text-slate-600 font-medium mb-1">Total Cajas Despachadas</label>
                 <input
                   type="number"
                   value={formData.financial_totals.total_boxes}
@@ -562,7 +629,7 @@ export const SplitReviewView: React.FC<SplitReviewViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-600 font-medium mb-1">Total de Unidades Despachadas</label>
+                <label className="block text-slate-600 font-medium mb-1">Total Unidades Despachadas</label>
                 <input
                   type="number"
                   value={formData.financial_totals.total_units}
@@ -609,20 +676,26 @@ export const SplitReviewView: React.FC<SplitReviewViewProps> = ({
           )}
         </div>
 
-        {/* Section 5: Logistics */}
-        <div className="border border-slate-200 rounded-lg overflow-hidden">
+        {/* Section 5: Sheet 3 - ENTREGA (11 Columns) */}
+        <div className="border border-amber-200 rounded-lg overflow-hidden ring-1 ring-amber-50">
           <button
             onClick={() => toggleSection('logistics')}
-            className="w-full bg-slate-50 px-4 py-3 flex justify-between items-center text-sm font-semibold text-slate-800 hover:bg-slate-100 transition-colors"
+            className="w-full bg-amber-50/60 px-4 py-3 flex justify-between items-center text-sm font-semibold text-amber-950 hover:bg-amber-100/70 transition-colors"
           >
-            <span>5. Transporte y Logística</span>
+            <div className="flex items-center space-x-2">
+              <Truck className="w-4 h-4 text-amber-600" />
+              <span>Hoja 3 Excel: ENTREGA (Logística y Traslado - 11 Columnas)</span>
+              <span className="text-[10px] px-2 py-0.5 rounded font-bold uppercase bg-amber-200 text-amber-900 ml-2">
+                11 Campos
+              </span>
+            </div>
             {openSections.logistics ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
 
           {openSections.logistics && (
-            <div className="p-4 grid grid-cols-1 md:grid-cols-4 gap-4 text-xs bg-white">
+            <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs bg-white">
               <div>
-                <label className="block text-slate-600 font-medium mb-1">Nombre Conductor</label>
+                <label className="block text-slate-600 font-medium mb-1">Nombre Conductor (NOMBRE-TRASLADOR)</label>
                 <input
                   type="text"
                   value={formData.transport_logistics.driver_name}
@@ -632,7 +705,18 @@ export const SplitReviewView: React.FC<SplitReviewViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-600 font-medium mb-1">ID Empleado</label>
+                <label className="block text-slate-600 font-medium mb-1">Identidad (IDENTIDAD)</label>
+                <input
+                  type="text"
+                  value={formData.transport_logistics.national_id}
+                  onChange={(e) => handleLogisticsChange('national_id', e.target.value)}
+                  className="table-input font-mono"
+                  data-testid="input-driver-national-id"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-600 font-medium mb-1">ID Empleado (CODIOGO_EMPLEADO)</label>
                 <input
                   type="text"
                   value={formData.transport_logistics.employee_id}
@@ -642,7 +726,18 @@ export const SplitReviewView: React.FC<SplitReviewViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-600 font-medium mb-1">Ruta Asignada (Auditoría)</label>
+                <label className="block text-slate-600 font-medium mb-1">Cargo (CARGO)</label>
+                <input
+                  type="text"
+                  value={formData.transport_logistics.role}
+                  onChange={(e) => handleLogisticsChange('role', e.target.value)}
+                  className="table-input"
+                  data-testid="input-driver-role"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-600 font-medium mb-1">Ruta Asignada (RUTA)</label>
                 <input
                   type="text"
                   value={formData.transport_logistics.assigned_route}
@@ -653,7 +748,7 @@ export const SplitReviewView: React.FC<SplitReviewViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-600 font-medium mb-1">Unidad / Placa</label>
+                <label className="block text-slate-600 font-medium mb-1">Unidad / Placa (UNIDAD)</label>
                 <input
                   type="text"
                   value={formData.transport_logistics.transport_unit}
@@ -671,7 +766,10 @@ export const SplitReviewView: React.FC<SplitReviewViewProps> = ({
             onClick={() => toggleSection('authorizations')}
             className="w-full bg-slate-50 px-4 py-3 flex justify-between items-center text-sm font-semibold text-slate-800 hover:bg-slate-100 transition-colors"
           >
-            <span>6. Firmas y Autorizaciones</span>
+            <div className="flex items-center space-x-2">
+              <UserCheck className="w-4 h-4 text-slate-500" />
+              <span>Firmas y Autorizaciones</span>
+            </div>
             {openSections.authorizations ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
 
@@ -733,3 +831,4 @@ export const SplitReviewView: React.FC<SplitReviewViewProps> = ({
     </div>
   );
 };
+

@@ -21,14 +21,14 @@ const sampleDoc: DinatInvoiceDocument = {
     email: 'ventas@dinathonduras.hn',
   },
   client: {
-    company_name: 'Supermercados La Colonia',
+    company_name: 'Supermercados La Colonia, S. A. de C. V.',
     rtn: '08019008123459',
     store_name: 'T5 - La Kennedy',
     store_code: 'LC-T5-TGU',
-    city_department: 'Tegucigalpa',
-    address: 'Colonia Kennedy',
-    coordinates: { latitude: 14.06793, longitude: -87.194347, reference_system: 'WGS 84' },
-    store_contact: 'Lic. Marleny Zelaya',
+    city_department: 'Tegucigalpa, Francisco Morazán, Honduras',
+    address: 'Colonia Kennedy, Bloque 7, Avenida Principal',
+    coordinates: { latitude: 14.06793, longitude: -87.194347, reference_system: 'WGS 84 (EPSG:4326)' },
+    store_contact: 'Lic. Marleny Zelaya - Jefa de Recibo',
   },
   items: [
     {
@@ -55,9 +55,9 @@ const sampleDoc: DinatInvoiceDocument = {
     driver_name: 'José Fernando Andino Cruz',
     employee_id: 'DNT-1428',
     national_id: '0801-1992-04517',
-    role: 'Conductor',
+    role: 'Conductor - Repartidor Ruta Sur',
     assigned_route: 'R-05 Tegucigalpa Centro-Sur',
-    transport_unit: 'PBK-7412',
+    transport_unit: 'Camión refrigerado / Placa PBK-7412',
   },
   delivery_status: {
     status: 'SÍ - REALIZADA SIN PROBLEMA',
@@ -73,7 +73,7 @@ const sampleDoc: DinatInvoiceDocument = {
 };
 
 describe('SplitReviewView Component', () => {
-  it('renders Delivery Status as the FIRST section with high-priority status indicators', () => {
+  it('renders Delivery Status as high-priority status indicators', () => {
     render(
       <SplitReviewView
         documentData={sampleDoc}
@@ -107,14 +107,14 @@ describe('SplitReviewView Component', () => {
     );
 
     const statusSelect = screen.getByTestId('input-delivery-status') as HTMLSelectElement;
-    expect(screen.getByText(/Recepción de Producto Exitosa/i)).toBeInTheDocument();
+    expect(screen.getByText(/Recepción de Producto Conforme/i)).toBeInTheDocument();
 
     fireEvent.change(statusSelect, { target: { value: 'NO - CON PROBLEMAS / FALTANTES' } });
 
     expect(screen.getByText(/Atención: Incidencia o Discrepancia Detectada/i)).toBeInTheDocument();
   });
 
-  it('renders correct column alignments for Sabor, Presentación, Cajas, and Unidades', () => {
+  it('renders Sheet 1 (DATOS-CLIENTES) with all 11 columns editable', () => {
     render(
       <SplitReviewView
         documentData={sampleDoc}
@@ -124,14 +124,70 @@ describe('SplitReviewView Component', () => {
       />
     );
 
+    expect(screen.getByText(/Hoja 1 Excel: DATOS-CLIENTES/i)).toBeInTheDocument();
+    const storeCodeInput = screen.getByTestId('input-store-code') as HTMLInputElement;
+    const cityInput = screen.getByTestId('input-client-city') as HTMLInputElement;
+    const addressInput = screen.getByTestId('input-client-address') as HTMLInputElement;
+    const latInput = screen.getByTestId('input-client-lat') as HTMLInputElement;
+    const lngInput = screen.getByTestId('input-client-lng') as HTMLInputElement;
+
+    expect(storeCodeInput.value).toBe('LC-T5-TGU');
+    expect(cityInput.value).toContain('Tegucigalpa');
+    expect(addressInput.value).toContain('Colonia Kennedy');
+    expect(Number(latInput.value)).toBe(14.06793);
+    expect(Number(lngInput.value)).toBe(-87.194347);
+  });
+
+  it('renders Sheet 2 (PRODUCTO) with 9 columns and auto-calculates total line and totals', () => {
+    render(
+      <SplitReviewView
+        documentData={sampleDoc}
+        onValidateData={vi.fn()}
+        onReset={vi.fn()}
+        onOpenJsonModal={vi.fn()}
+      />
+    );
+
+    const codeInput = screen.getByTestId('item-code-0') as HTMLInputElement;
+    const descInput = screen.getByTestId('item-desc-0') as HTMLInputElement;
     const flavorInput = screen.getByTestId('item-flavor-0') as HTMLInputElement;
     const pkgInput = screen.getByTestId('item-pkg-0') as HTMLInputElement;
     const boxesInput = screen.getByTestId('item-boxes-0') as HTMLInputElement;
     const unitsInput = screen.getByTestId('item-units-0') as HTMLInputElement;
+    const priceInput = screen.getByTestId('item-price-0') as HTMLInputElement;
 
+    expect(codeInput.value).toBe('NAT-LT-MZ');
+    expect(descInput.value).toBe('Jugo NATURAS en lata 335 ml');
     expect(flavorInput.value).toBe('Manzana');
     expect(pkgInput.value).toBe('Caja x 24 latas');
     expect(boxesInput.value).toBe('40');
     expect(unitsInput.value).toBe('960');
+    expect(priceInput.value).toBe('348');
+
+    // Change boxes quantity and test recalculation
+    fireEvent.change(boxesInput, { target: { value: '50' } });
+    const grandTotalInput = screen.getByTestId('input-grand-total') as HTMLInputElement;
+    expect(Number(grandTotalInput.value)).toBeGreaterThan(16008.0);
+  });
+
+  it('renders Sheet 3 (ENTREGA) with all 11 columns editable', () => {
+    render(
+      <SplitReviewView
+        documentData={sampleDoc}
+        onValidateData={vi.fn()}
+        onReset={vi.fn()}
+        onOpenJsonModal={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText(/Hoja 3 Excel: ENTREGA/i)).toBeInTheDocument();
+    const natIdInput = screen.getByTestId('input-driver-national-id') as HTMLInputElement;
+    const roleInput = screen.getByTestId('input-driver-role') as HTMLInputElement;
+    const routeInput = screen.getByTestId('input-assigned-route') as HTMLInputElement;
+
+    expect(natIdInput.value).toBe('0801-1992-04517');
+    expect(roleInput.value).toBe('Conductor - Repartidor Ruta Sur');
+    expect(routeInput.value).toBe('R-05 Tegucigalpa Centro-Sur');
   });
 });
+

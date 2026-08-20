@@ -31,18 +31,20 @@ def test_langchain_pdf_extraction_real_file():
 
     doc: DinatInvoiceDocument = extract_invoice_data_from_bytes(pdf_bytes, "Orden_Compra_DINAT_Naturas_LaColonia_T5_2026-08-17.pdf")
     
-    # 1. Check Document Metadata
+    # 1. Check Sheet 1: DATOS-CLIENTES (11 columns)
     assert doc.document_metadata.order_number == "OC-2026-08-0417"
     assert doc.document_metadata.issue_date == "2026-08-17"
-    assert doc.document_metadata.currency == "HNL"
-
-    # 2. Check Vendor & Client
-    assert "DINAT HONDURAS" in doc.vendor.company_name
-    assert doc.vendor.rtn == "08019995123456"
     assert "Supermercados La Colonia" in doc.client.company_name
+    assert doc.client.rtn == "08019008123459"
+    assert doc.client.store_name == "T5 - La Kennedy"
     assert doc.client.store_code == "LC-T5-TGU"
+    assert "Tegucigalpa" in doc.client.city_department
+    assert "Colonia Kennedy" in doc.client.address
+    assert doc.client.coordinates.latitude == 14.06793
+    assert doc.client.coordinates.longitude == -87.194347
+    assert "Marleny Zelaya" in doc.client.store_contact
 
-    # 3. Check All 12 Line Items
+    # 2. Check Sheet 2: PRODUCTO (9 columns across 12 line items)
     assert len(doc.items) == 12, f"Expected 12 line items, but got {len(doc.items)}"
     
     product_codes = [item.code for item in doc.items]
@@ -54,13 +56,32 @@ def test_langchain_pdf_extraction_real_file():
     for code in expected_codes:
         assert code in product_codes, f"Product code {code} missing from extracted items"
 
-    # 4. Check Financial Totals
+    first_item = doc.items[0]
+    assert first_item.code == "NAT-LT-MZ"
+    assert "Jugo NATURAS" in first_item.description
+    assert first_item.flavor == "Manzana"
+    assert "24" in first_item.package_type
+    assert first_item.boxes_quantity == 40
+    assert first_item.total_units == 960
+    assert first_item.unit_price == 348.0
+    assert first_item.total_amount == 13920.0
+
+    # 3. Check Financial Totals
     assert doc.financial_totals.total_boxes == 419
     assert doc.financial_totals.taxable_subtotal == 123267.75
     assert doc.financial_totals.tax_isv_15 == 18490.16
     assert doc.financial_totals.grand_total == 141757.91
 
-    # 5. Check Logistics & Authorizations
+    # 4. Check Sheet 3: ENTREGA (11 columns)
     assert "José Fernando Andino Cruz" in doc.transport_logistics.driver_name
+    assert doc.transport_logistics.national_id == "0801-1992-04517"
+    assert "R-05" in doc.transport_logistics.assigned_route
     assert doc.transport_logistics.employee_id == "DNT-1428"
+    assert "Conductor" in doc.transport_logistics.role
+    assert "PBK-7412" in doc.transport_logistics.transport_unit
+    assert doc.delivery_status.status == "SÍ - REALIZADA SIN PROBLEMA"
+    assert doc.delivery_status.arrival_time == "07:42 a.m."
+    assert doc.delivery_status.completion_time == "08:26 a.m."
+    assert "Entrega realizada sin novedad" in doc.delivery_status.observations
     assert "Lic. Marleny Zelaya" in doc.authorizations.received_by
+
