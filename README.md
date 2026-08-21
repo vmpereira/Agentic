@@ -34,6 +34,9 @@ graph TD
 3. **OpenAI (Cloud LLM)**: Powered by `langchain-openai` (`gpt-4o`) with strict Pydantic JSON schema enforcement.
 4. **Local Deterministic Fallback**: A fast, zero-dependency regex and rule parser for offline execution and fast CI unit testing.
 
+### 🔄 Dynamic LLM Engine Detection & Health Check:
+The backend exposes a dynamic runtime health check endpoint (`GET /health`) that inspects active environment variables and returns the exact engine in use. The Next.js frontend automatically queries this on load and reflects the live status (e.g., `Qwen 2.5 Coder 7B (Ollama)`, `Gemini 1.5 Flash`, or `GPT-4o`) directly in the header banner.
+
 ---
 
 ## 🛠️ Tech Stack
@@ -147,6 +150,16 @@ If no environment variables are set, the app automatically runs in deterministic
 
 ---
 
+## 📦 Multi-Brand & Template Support
+
+The extraction engine handles heterogeneous PDF purchase orders across multiple brands and layouts:
+- **Brands Supported**: Naturas, La Granja, Raptor, Mountain Dew, Del Prado, and general Dinat templates.
+- **Header & Timing Extraction**: Captures `Hora de llegada`, `Hora de finalización`, `Fecha de emisión`, `Fecha de entrega`, vendor RTN, and order numbers.
+- **Geolocation & Client Metadata**: Auto-detects client names, store IDs, addresses, and latitude/longitude coordinates.
+- **Line Items & Recalculation**: Robust tabular parsing of quantities, units, descriptions, prices, discounts, and line totals with automatic tax recalculation.
+
+---
+
 ## 🧪 Running Automated Tests
 
 ### 1. Run Standard Backend Pytest Suite
@@ -194,4 +207,13 @@ npm run build
      - **Append (agregar al final)**: Appends new data rows to an existing Excel workbook sheet.
      - **Crear nuevo archivo**: Creates a brand new formatted Excel file.
    - Click **Confirmar y generar Excel** to save.
+
+---
+
+## 📝 Recent Updates & Changelog
+
+- **feat(ui)**: Dynamic LLM model detection and live health check banner (showing actual active model in UI).
+- **feat(extractor)**: Full local Ollama (`qwen2.5-coder:7b`) support with structured Pydantic output.
+- **feat(multi-brand)**: Enhanced multi-brand extraction accuracy for Naturas, La Granja, Raptor, Mountain Dew, timestamps (`Hora llegada`/`Hora finalización`), and coordinates.
+- **test**: Comprehensive automated test suites for API, Excel Exporter, LangChain extractor, test PDFs, and live Ollama inference.
 
