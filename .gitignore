@@ -23,10 +23,8 @@ env/
 
 # Environment & Credentials
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
 
 # OS & IDE
 .DS_Store
@@ -34,9 +32,16 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Local Generated Excel Exports
+# Local PDF Documents & Samples
+archivos_prueba/
+ORDEN DE COMPRA.zip
+*.zip
+*.pdf
+
+# Local Excel Files & Exports
+*.xlsx
+*.xls
 exports/*.xlsx
 backend/exports/*.xlsx
-Nuevo_MATRIZ-ORDEN-COMPRA.xlsx
 !exports/.gitkeep
 !backend/exports/.gitkeep

@@ -19,7 +19,8 @@ def is_ollama_running() -> bool:
 
 def get_pdf_text(relative_path: str) -> str:
     full_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../..", relative_path))
-    assert os.path.exists(full_path), f"File not found at {full_path}"
+    if not os.path.exists(full_path):
+        pytest.skip(f"Test file not found: {relative_path}")
     with open(full_path, "rb") as f:
         return parse_pdf_text(f.read())
 
