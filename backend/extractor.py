@@ -644,3 +644,25 @@ def extract_invoice_data_from_bytes(pdf_bytes: bytes, filename: str) -> DinatInv
     # 4. Local Deterministic Parser Fallback
     logger.info("Using LangChain structured document parser for PDF extraction.")
     return parse_dinat_pdf_to_document(pdf_text, filename)
+
+
+def get_active_model_name() -> str:
+    """
+    Returns the user-facing string of the model currently configured and used by the extraction engine.
+    """
+    use_ollama = os.environ.get("USE_OLLAMA", "").lower() in ["true", "1", "yes"] or os.environ.get("OLLAMA_MODEL") is not None
+    google_api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    openai_api_key = os.environ.get("OPENAI_API_KEY")
+
+    if use_ollama:
+        model = os.environ.get("OLLAMA_MODEL", "qwen2.5-coder:7b")
+        if "qwen" in model.lower():
+            return "Qwen 2.5 Coder 7B (Ollama)"
+        return f"Ollama ({model})"
+    elif google_api_key:
+        return "Gemini 1.5 Flash"
+    elif openai_api_key:
+        return "GPT-4o"
+    else:
+        return "Qwen 2.5 Coder 7B"
+

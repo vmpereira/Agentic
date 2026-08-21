@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { Uploader } from '../components/Uploader';
 import { SplitReviewView } from '../components/SplitReviewView';
@@ -26,6 +26,21 @@ export default function AppDashboard() {
   const [isJsonModalOpen, setIsJsonModalOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [activeModel, setActiveModel] = useState<string>('Qwen 2.5 Coder 7B');
+
+  useEffect(() => {
+    fetch('http://localhost:8000/health')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.model) {
+          setActiveModel(data.model);
+        }
+      })
+      .catch((err) => {
+        console.warn('Backend health check skipped or offline:', err);
+      });
+  }, []);
+
 
   // Success Modal State
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
@@ -297,7 +312,7 @@ export default function AppDashboard() {
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                 <span>Modelo LLM</span>
               </div>
-              <p className="text-xs font-bold text-white">GPT-4o / Gemini 1.5</p>
+              <p className="text-xs font-bold text-white">{activeModel}</p>
               <div className="flex items-center space-x-1.5 text-[10px] text-emerald-400 pt-1">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                 <span>Conectado</span>

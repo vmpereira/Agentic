@@ -2,7 +2,7 @@ import logging
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from schemas import DinatInvoiceDocument, ExcelExportRequest, ExcelExportResponse
-from extractor import extract_invoice_data_from_bytes
+from extractor import extract_invoice_data_from_bytes, get_active_model_name
 from exporter import generate_or_append_excel
 
 logging.basicConfig(level=logging.INFO)
@@ -29,8 +29,10 @@ def health_check():
     return {
         "status": "ok",
         "service": "PDF Data Extractor API",
-        "version": "1.0.0"
+        "version": "1.0.0",
+        "model": get_active_model_name()
     }
+
 
 
 @app.post("/api/extract", response_model=DinatInvoiceDocument)
